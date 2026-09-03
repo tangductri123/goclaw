@@ -71,8 +71,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: '2.0'
+          memory: "${GOCLAW_MEM_LIMIT:-1G}"
           pids: 200
     networks:
       - default
