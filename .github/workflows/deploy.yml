@@ -1,0 +1,42 @@
+name: Deploy GoClaw to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Production VPS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Execute Remote SSH Commands
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT || 2018 }}
+          username: ${{ secrets.VPS_USERNAME || 'root' }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            echo "=== [1/4] Navigating to application directory ==="
+            cd /opt/goclaw || exit 1
+
+            echo "=== [2/4] Fetching latest changes from main branch ==="
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "=== [3/4] Ensuring environment configuration ==="
+            chmod +x prepare-env.sh
+            ./prepare-env.sh
+
+            echo "=== [4/4] Building and starting Docker services ==="
+            docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build --remove-orphans
+
+            echo "=== Deployment Completed Successfully! ==="
+            docker compose ps
